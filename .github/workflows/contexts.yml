@@ -3,52 +3,36 @@ name: Contexts Demo
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
-  workflow_dispatch:
 
 jobs:
-  dump:
+  functions:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: github context (event metadata)
+      - name: contains / startsWith / endsWith
         run: |
-          echo "event_name: ${{ github.event_name }}"
-          echo "ref:        ${{ github.ref }}"
-          echo "ref_name:   ${{ github.ref_name }}"
-          echo "ref_type:   ${{ github.ref_type }}"
-          echo "sha:        ${{ github.sha }}"
-          echo "actor:      ${{ github.actor }}"
-          echo "run_id:     ${{ github.run_id }}"
-          echo "run_number: ${{ github.run_number }}"
-          echo "workflow:   ${{ github.workflow }}"
-          echo "repository: ${{ github.repository }}"
+          echo "contains:   ${{ contains(github.ref, 'master') }}"
+          echo "startsWith: ${{ startsWith(github.ref, 'refs/heads/') }}"
+          echo "endsWith:   ${{ endsWith(github.ref, 'master') }}"
 
-      - name: runner context (machine metadata)
+      - name: format
         run: |
-          echo "name:       ${{ runner.name }}"
-          echo "os:         ${{ runner.os }}"
-          echo "arch:       ${{ runner.arch }}"
-          echo "temp:       ${{ runner.temp }}"
+          echo "${{ format('Hello {0} from run #{1}', github.actor, github.run_number) }}"
 
-      - name: env context (environment variables)
+      - name: join (uses object filter on commits)
+        run: |
+          echo "Commit messages: ${{ join(github.event.commits.*.message, ' | ') }}"
+
+      - name: toJSON / fromJSON round trip
         env:
-          EXAMPLE: "from step"
+          CFG: '{"replicas":3,"tier":"Standard"}'
         run: |
-          echo "EXAMPLE:    ${{ env.EXAMPLE }}"
-          echo "GITHUB_REF: ${{ env.GITHUB_REF }}"
+          echo "Replicas: ${{ fromJSON(env.CFG).replicas }}"
+          echo "Tier:     ${{ fromJSON(env.CFG).tier }}"
+          echo "As JSON:  ${{ toJSON(github.repository_owner) }}"
 
-      - name: job and steps contexts
-        id: probe
+      - name: hashFiles
         run: |
-          echo "this step ran"
-          echo "value=hello" >> "$GITHUB_OUTPUT"
-
-      - name: read job and steps after probe
-        run: |
-          echo "job.status:           ${{ job.status }}"
-          echo "steps.probe.outcome:  ${{ steps.probe.outcome }}"
-          echo "steps.probe.conclusion: ${{ steps.probe.conclusion }}"
-          echo "steps.probe.outputs.value: ${{ steps.probe.outputs.value }}"
+          echo "Hash of all package*.json: ${{ hashFiles('**/package*.json') }}"
+          echo "Use the hash as a cache key for invalidation when deps change"
