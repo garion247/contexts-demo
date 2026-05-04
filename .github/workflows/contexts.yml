@@ -1,0 +1,54 @@
+name: Contexts Demo
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: github context (event metadata)
+        run: |
+          echo "event_name: ${{ github.event_name }}"
+          echo "ref:        ${{ github.ref }}"
+          echo "ref_name:   ${{ github.ref_name }}"
+          echo "ref_type:   ${{ github.ref_type }}"
+          echo "sha:        ${{ github.sha }}"
+          echo "actor:      ${{ github.actor }}"
+          echo "run_id:     ${{ github.run_id }}"
+          echo "run_number: ${{ github.run_number }}"
+          echo "workflow:   ${{ github.workflow }}"
+          echo "repository: ${{ github.repository }}"
+
+      - name: runner context (machine metadata)
+        run: |
+          echo "name:       ${{ runner.name }}"
+          echo "os:         ${{ runner.os }}"
+          echo "arch:       ${{ runner.arch }}"
+          echo "temp:       ${{ runner.temp }}"
+
+      - name: env context (environment variables)
+        env:
+          EXAMPLE: "from step"
+        run: |
+          echo "EXAMPLE:    ${{ env.EXAMPLE }}"
+          echo "GITHUB_REF: ${{ env.GITHUB_REF }}"
+
+      - name: job and steps contexts
+        id: probe
+        run: |
+          echo "this step ran"
+          echo "value=hello" >> "$GITHUB_OUTPUT"
+
+      - name: read job and steps after probe
+        run: |
+          echo "job.status:           ${{ job.status }}"
+          echo "steps.probe.outcome:  ${{ steps.probe.outcome }}"
+          echo "steps.probe.conclusion: ${{ steps.probe.conclusion }}"
+          echo "steps.probe.outputs.value: ${{ steps.probe.outputs.value }}"
