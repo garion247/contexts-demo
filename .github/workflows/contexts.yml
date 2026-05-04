@@ -2,32 +2,32 @@ name: Contexts Demo
 
 on:
   push:
-    branches: [ master, 'release/**' ]
-  pull_request:
     branches: [ master ]
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Override target environment'
-        required: false
-        type: choice
-        default: ''
-        options: [ '', development, staging, production ]
-
-env:
-  TARGET_ENV: >-
-    ${{
-      (github.event_name == 'workflow_dispatch' && inputs.environment != '' && inputs.environment) ||
-      (github.ref == 'refs/heads/master' && 'production') ||
-      (startsWith(github.ref, 'refs/heads/release/') && 'staging') ||
-      'development'
-    }}
+      config:
+        description: 'JSON config: {"env":"...","replicas":N}'
+        required: true
+        type: string
+        default: '{"env":"staging","replicas":2}'
 
 jobs:
-  report:
+  filters:
     runs-on: ubuntu-latest
     steps:
-      - name: Show resolved environment
+      - uses: actions/checkout@v4
+
+      - name: Object filter on a push event
+        if: github.event_name == 'push'
         run: |
-          echo "Trigger: ${{ github.event_name }} on ${{ github.ref }}"
-          echo "TARGET_ENV resolved to: ${{ env.TARGET_ENV }}"
+          echo "All commit messages on this push:"
+          echo "${{ join(github.event.commits.*.message, ' || ') }}"
+          echo "All commit authors on this push:"
+          echo "${{ join(github.event.commits.*.author.name, ', ') }}"
+
+      - name: fromJSON round trip on workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Raw input: ${{ inputs.config }}"
+          echo "Parsed env:      ${{ fromJSON(inputs.config).env }}"
+          echo "Parsed replicas: ${{ fromJSON(inputs.config).replicas }}"
