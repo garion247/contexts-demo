@@ -2,37 +2,32 @@ name: Contexts Demo
 
 on:
   push:
+    branches: [ master, 'release/**' ]
+  pull_request:
     branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Override target environment'
+        required: false
+        type: choice
+        default: ''
+        options: [ '', development, staging, production ]
+
+env:
+  TARGET_ENV: >-
+    ${{
+      (github.event_name == 'workflow_dispatch' && inputs.environment != '' && inputs.environment) ||
+      (github.ref == 'refs/heads/master' && 'production') ||
+      (startsWith(github.ref, 'refs/heads/release/') && 'staging') ||
+      'development'
+    }}
 
 jobs:
-  functions:
+  report:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: contains / startsWith / endsWith
+      - name: Show resolved environment
         run: |
-          echo "contains:   ${{ contains(github.ref, 'master') }}"
-          echo "startsWith: ${{ startsWith(github.ref, 'refs/heads/') }}"
-          echo "endsWith:   ${{ endsWith(github.ref, 'master') }}"
-
-      - name: format
-        run: |
-          echo "${{ format('Hello {0} from run #{1}', github.actor, github.run_number) }}"
-
-      - name: join (uses object filter on commits)
-        run: |
-          echo "Commit messages: ${{ join(github.event.commits.*.message, ' | ') }}"
-
-      - name: toJSON / fromJSON round trip
-        env:
-          CFG: '{"replicas":3,"tier":"Standard"}'
-        run: |
-          echo "Replicas: ${{ fromJSON(env.CFG).replicas }}"
-          echo "Tier:     ${{ fromJSON(env.CFG).tier }}"
-          echo "As JSON:  ${{ toJSON(github.repository_owner) }}"
-
-      - name: hashFiles
-        run: |
-          echo "Hash of all package*.json: ${{ hashFiles('**/package*.json') }}"
-          echo "Use the hash as a cache key for invalidation when deps change"
+          echo "Trigger: ${{ github.event_name }} on ${{ github.ref }}"
+          echo "TARGET_ENV resolved to: ${{ env.TARGET_ENV }}"
